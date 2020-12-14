@@ -32,7 +32,15 @@ myApp:
 The class you provide as `defaults.handler` has to implement `\Psr\Http\Server\RequestHandlerInterface`.
 The routing parameters will be available in `$request->getQueryParams()`.
 
+### Options
+
 Under the hood [symfony/routing](https://github.com/symfony/routing) is used.
+
+Everything that is available as YAML configuration option in `symfony/routing` should work with this package out of the box.
+
+This package offers one additional option:
+
+`default.requiresTsfe: true` - If true, then `$GLOBALS['TSFE']` will be initialized before your handler is called.
 
 ### Generate Route URLs
 
