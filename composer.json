@@ -1,0 +1,13 @@
+{
+  "name": "sinso/app-routes",
+  "type": "typo3-cms-extension",
+  "description": "Easy way to route rest-like URLs to your code",
+  "require": {
+    "typo3/cms-core": "^10.4"
+  },
+  "autoload": {
+    "psr-4": {
+      "Sinso\\AppRoutes\\": "Classes"
+    }
+  }
+}
