@@ -49,14 +49,14 @@ To generate URLs you can use the `Sinso\AppRoutes\Service\Router`:
 ````
 $router = GeneralUtility::makeInstance(\Sinso\AppRoutes\Service\Router::class);
 $url = $router->getUrlGenerator()->generate('myApp.order', ['orderUid' => 42]);
-// https://www.exam
+// https://www.example.com/myApi/v2/order/42
 ````
 
 If you need to generate a URL in a Fluid template, there's also a ViewHelper for that:
 
 ````
 <html
-	xmlns:ar="http://typo3.org/ns/Smic/AppRoutes/ViewHelpers"
+	xmlns:ar="http://typo3.org/ns/Sinso/AppRoutes/ViewHelpers"
 	data-namespace-typo3-fluid="true"
 >
 
