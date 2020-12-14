@@ -40,7 +40,7 @@ Everything that is available as YAML configuration option in `symfony/routing` s
 
 This package offers one additional option:
 
-`default.requiresTsfe: true` - If true, then `$GLOBALS['TSFE']` will be initialized before your handler is called.
+`defaults.requiresTsfe: true` - If true, then `$GLOBALS['TSFE']` will be initialized before your handler is called.
 
 ### Generate Route URLs
 
