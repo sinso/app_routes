@@ -60,7 +60,12 @@ If you need to generate a URL in a Fluid template, there's also a ViewHelper for
 	data-namespace-typo3-fluid="true"
 >
 
-{ar:route(routeName: 'myApp.order', parameters:{orderUid: '42'})}
+{ar:route(routeName: 'myApp.order', parameters: {orderUid: '42'})}
 
 </html>
 ````
+
+### Configuration Module
+
+In the configuration module there's an entry "App Routes", that shows all configured routes.
+***Requires TYPO3 v11***

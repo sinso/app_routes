@@ -6,3 +6,10 @@ services:
 
   Sinso\AppRoutes\:
     resource: '../Classes/*'
+
+  lowlevel.configuration.module.provider.app_routes:
+    class: 'Sinso\AppRoutes\ConfigurationModuleProvider\AppRoutesProvider'
+    tags:
+      - name: 'lowlevel.configuration.module.provider'
+        identifier: 'appRoutesConfiguration'
+        label: 'App Routes'
