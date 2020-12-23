@@ -2,6 +2,7 @@
   "name": "sinso/app-routes",
   "type": "typo3-cms-extension",
   "description": "Easy way to route rest-like URLs to your code",
+  "license": "GPL-2.0-only",
   "require": {
     "typo3/cms-core": "^10.4 || ^11.0"
   },
