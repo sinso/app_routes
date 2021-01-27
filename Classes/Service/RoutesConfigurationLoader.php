@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace Sinso\AppRoutes\Service;
 
 use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 use TYPO3\CMS\Core\Configuration\Loader\YamlFileLoader;
 use TYPO3\CMS\Core\Package\PackageManager;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -13,9 +14,14 @@ class RoutesConfigurationLoader
     public const APP_ROUTES_YAML_PATH = 'Configuration/AppRoutes.yaml';
 
     /**
+     * @var FrontendInterface
+     */
+    protected $cache;
+
+    /**
      * @var array
      */
-    protected $routesConfiguration = [];
+    protected $routesConfiguration;
 
     /**
      * @var YamlFileLoader
@@ -24,12 +30,23 @@ class RoutesConfigurationLoader
 
     public function __construct(CacheManager $cacheManager, YamlFileLoader $yamlFileLoader)
     {
-        $cache = $cacheManager->getCache('app_routes');
+        $this->cache = $cacheManager->getCache('app_routes');
         $this->yamlFileLoader = $yamlFileLoader;
+    }
 
+    public function getRoutesConfiguration(): array
+    {
+        if (!is_array($this->routesConfiguration)) {
+            $this->loadRoutesConfiguration();
+        }
+        return $this->routesConfiguration;
+    }
+
+    protected function loadRoutesConfiguration(): void
+    {
         $key = 'appRoutesConfiguration';
-        if ($cache->has($key)) {
-            $this->routesConfiguration = $cache->get($key);
+        if ($this->cache->has($key)) {
+            $this->routesConfiguration = $this->cache->get($key);
             return;
         }
 
@@ -41,12 +58,7 @@ class RoutesConfigurationLoader
             );
         }
         $this->routesConfiguration = $routesConfiguration;
-        $cache->set($key, $routesConfiguration);
-    }
-
-    public function getRoutesConfiguration(): array
-    {
-        return $this->routesConfiguration;
+        $this->cache->set($key, $routesConfiguration);
     }
 
     protected function findAppRouteYamlFiles(): array
