@@ -9,5 +9,10 @@
     "psr-4": {
       "Sinso\\AppRoutes\\": "Classes"
     }
+  },
+  "extra": {
+    "typo3/cms": {
+      "extension-key": "app_routes"
+    }
   }
 }
