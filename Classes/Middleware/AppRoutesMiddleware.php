@@ -13,6 +13,7 @@ use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Domain\Repository\PageRepository;
 use TYPO3\CMS\Core\Routing\PageArguments;
 use TYPO3\CMS\Core\Site\Entity\SiteInterface;
+use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
 use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
@@ -50,21 +51,21 @@ class AppRoutesMiddleware implements MiddlewareInterface
             $site = $request->getAttribute('site');
             /** @var FrontendUserAuthentication $feUserAuthentication */
             $feUserAuthentication = $request->getAttribute('frontend.user');
-            $this->bootFrontendController($feUserAuthentication, $site);
+            $language = $this->getLanguage($site, $request);
+            $this->bootFrontendController($feUserAuthentication, $site, $language);
         }
 
         return $handler->handle($request);
     }
 
-    protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, ?SiteInterface $site): TypoScriptFrontendController
+    protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, SiteInterface $site, SiteLanguage $language): TypoScriptFrontendController
     {
-        $pageId = $site ? $site->getRootPageId() : ($GLOBALS['TSFE'] ? $GLOBALS['TSFE']->id : 0);
         $controller = GeneralUtility::makeInstance(
             TypoScriptFrontendController::class,
             GeneralUtility::makeInstance(Context::class),
             $site,
-            $site->getDefaultLanguage(),
-            new PageArguments((int)$pageId, '0', [])
+            $language,
+            new PageArguments($site->getRootPageId(), '0', [])
         );
         $controller->fe_user = $frontendUserAuthentication;
         $controller->fetch_the_id();
@@ -78,5 +79,16 @@ class AppRoutesMiddleware implements MiddlewareInterface
             $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
         }
         return $controller;
+    }
+
+    protected function getLanguage(SiteInterface $site, ServerRequestInterface $request): SiteLanguage
+    {
+        $languageUid = (int)$request->getQueryParams()['L'];
+        foreach ($site->getLanguages() as $siteLanguage) {
+            if ($siteLanguage->getLanguageId() === $languageUid) {
+                return $siteLanguage;
+            }
+        }
+        return $site->getDefaultLanguage();
     }
 }
