@@ -10,6 +10,7 @@ use Psr\Http\Server\RequestHandlerInterface;
 use Sinso\AppRoutes\Service\Router;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use TYPO3\CMS\Core\Context\Context;
+use TYPO3\CMS\Core\Context\LanguageAspectFactory;
 use TYPO3\CMS\Core\Domain\Repository\PageRepository;
 use TYPO3\CMS\Core\Routing\PageArguments;
 use TYPO3\CMS\Core\Site\Entity\SiteInterface;
@@ -52,6 +53,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
             /** @var FrontendUserAuthentication $feUserAuthentication */
             $feUserAuthentication = $request->getAttribute('frontend.user');
             $language = $this->getLanguage($site, $request);
+            GeneralUtility::makeInstance(Context::class)->setAspect('language', LanguageAspectFactory::createFromSiteLanguage($language));
             $this->bootFrontendController($feUserAuthentication, $site, $language);
         }
 
