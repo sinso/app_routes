@@ -8,8 +8,10 @@ use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
+use TYPO3\CMS\Core\Http\RequestFactory;
 use TYPO3\CMS\Core\Http\ServerRequestFactory;
 use TYPO3\CMS\Core\SingletonInterface;
+use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\HttpUtility;
 
 class Router implements SingletonInterface
@@ -45,6 +47,10 @@ class Router implements SingletonInterface
 
     protected function createRequestContext(): RequestContext
     {
+        if (TYPO3_REQUESTTYPE === TYPO3_REQUESTTYPE_CLI) {
+            return new RequestContext();
+        }
+
         $request = ServerRequestFactory::fromGlobals();
         return new RequestContext(
             '',
