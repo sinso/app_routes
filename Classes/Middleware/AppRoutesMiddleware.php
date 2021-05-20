@@ -60,8 +60,12 @@ class AppRoutesMiddleware implements MiddlewareInterface
         return $handler->handle($request);
     }
 
-    protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, SiteInterface $site, SiteLanguage $language): TypoScriptFrontendController
+    protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, SiteInterface $site, SiteLanguage $language): void
     {
+        if ($GLOBALS['TSFE'] instanceof TypoScriptFrontendController) {
+            return;
+        }
+        // @extensionScannerIgnoreLine - the extension scanner shows a strong warning, because it detects that the fourth constructor argument of TSFE is used which was deprecated in TYPO3 v9, however v10 introduced new constructor arguments which we're using here
         $controller = GeneralUtility::makeInstance(
             TypoScriptFrontendController::class,
             GeneralUtility::makeInstance(Context::class),
@@ -74,13 +78,8 @@ class AppRoutesMiddleware implements MiddlewareInterface
         $controller->getConfigArray();
         $controller->settingLanguage();
         $controller->newCObj();
-        if (!$GLOBALS['TSFE'] instanceof TypoScriptFrontendController) {
-            $GLOBALS['TSFE'] = $controller;
-        }
-        if (!$GLOBALS['TSFE']->sys_page instanceof PageRepository) {
-            $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
-        }
-        return $controller;
+        $GLOBALS['TSFE'] = $controller;
+        $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
     }
 
     protected function getLanguage(SiteInterface $site, ServerRequestInterface $request): SiteLanguage

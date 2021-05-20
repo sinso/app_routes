@@ -7,7 +7,6 @@ use TYPO3\CMS\Core\Cache\CacheManager;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 use TYPO3\CMS\Core\Configuration\Loader\YamlFileLoader;
 use TYPO3\CMS\Core\Package\PackageManager;
-use TYPO3\CMS\Core\Utility\GeneralUtility;
 
 class RoutesConfigurationLoader
 {
@@ -19,6 +18,11 @@ class RoutesConfigurationLoader
     protected $cache;
 
     /**
+     * @var PackageManager
+     */
+    protected $packageManager;
+
+    /**
      * @var array
      */
     protected $routesConfiguration;
@@ -28,9 +32,10 @@ class RoutesConfigurationLoader
      */
     protected $yamlFileLoader;
 
-    public function __construct(CacheManager $cacheManager, YamlFileLoader $yamlFileLoader)
+    public function __construct(CacheManager $cacheManager, PackageManager $packageManager, YamlFileLoader $yamlFileLoader)
     {
         $this->cache = $cacheManager->getCache('app_routes');
+        $this->packageManager = $packageManager;
         $this->yamlFileLoader = $yamlFileLoader;
     }
 
@@ -63,10 +68,8 @@ class RoutesConfigurationLoader
 
     protected function findAppRouteYamlFiles(): array
     {
-        $packageManager = GeneralUtility::makeInstance(PackageManager::class);
-
         $paths = [];
-        foreach ($packageManager->getActivePackages() as $package) {
+        foreach ($this->packageManager->getActivePackages() as $package) {
             $possiblePath = $package->getPackagePath() . self::APP_ROUTES_YAML_PATH;
             if (is_readable($possiblePath)) {
                 $paths[] = $possiblePath;
