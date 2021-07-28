@@ -39,6 +39,14 @@ class AppRoutesMiddleware implements MiddlewareInterface
 
     protected function handleWithParameters(array $parameters, ServerRequestInterface $request): ResponseInterface
     {
+        /** @var SiteInterface $site */
+        $site = $request->getAttribute('site');
+        $language = $this->getLanguage($site, $request);
+        $request = $request->withAttribute('language', $language);
+        GeneralUtility::makeInstance(Context::class)->setAspect('language', LanguageAspectFactory::createFromSiteLanguage($language));
+
+        $GLOBALS['TYPO3_REQUEST'] = $request;
+
         if (empty($parameters['handler'])) {
             throw new \Exception('Route must return a handler parameter', 1604066046);
         }
@@ -48,12 +56,8 @@ class AppRoutesMiddleware implements MiddlewareInterface
         }
 
         if ($parameters['requiresTsfe']) {
-            /** @var SiteInterface $site */
-            $site = $request->getAttribute('site');
             /** @var FrontendUserAuthentication $feUserAuthentication */
             $feUserAuthentication = $request->getAttribute('frontend.user');
-            $language = $this->getLanguage($site, $request);
-            GeneralUtility::makeInstance(Context::class)->setAspect('language', LanguageAspectFactory::createFromSiteLanguage($language));
             $this->bootFrontendController($feUserAuthentication, $site, $language);
         }
 
