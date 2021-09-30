@@ -8,6 +8,7 @@ use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Sinso\AppRoutes\Service\Router;
+use Symfony\Component\Routing\Exception\MethodNotAllowedException;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Context\LanguageAspectFactory;
@@ -26,7 +27,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
         $router = GeneralUtility::makeInstance(Router::class);
         try {
             $parameters = $router->getUrlMatcher()->match($request->getUri()->getPath());
-        } catch (ResourceNotFoundException $e) {
+        } catch (MethodNotAllowedException|ResourceNotFoundException $e) {
             // app routes did not match. go on with regular TYPO3 stack.
             return $handler->handle($request);
         }
