@@ -13,6 +13,7 @@ use TYPO3\CMS\Core\Http\ServerRequestFactory;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\HttpUtility;
+use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 
 class Router implements SingletonInterface
 {
@@ -52,10 +53,18 @@ class Router implements SingletonInterface
         }
 
         $request = ServerRequestFactory::fromGlobals();
+        if (
+            VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) >=
+            VersionNumberUtility::convertVersionNumberToInteger('11.2.0')
+        ) {
+            $host = (string)idn_to_ascii($request->getUri()->getHost());
+        } else {
+            $host = (string)HttpUtility::idn_to_ascii($request->getUri()->getHost());
+        }
         return new RequestContext(
             '',
             $request->getMethod(),
-            (string)HttpUtility::idn_to_ascii($request->getUri()->getHost()),
+            $host,
             $request->getUri()->getScheme(),
             80,
             443,
