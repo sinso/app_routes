@@ -56,7 +56,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
             throw new \Exception('Route must return a handler parameter which implements ' . RequestHandlerInterface::class, 1604066102);
         }
 
-        if ($parameters['requiresTsfe']) {
+        if ($parameters['requiresTsfe'] ?? false) {
             /** @var FrontendUserAuthentication $feUserAuthentication */
             $feUserAuthentication = $request->getAttribute('frontend.user');
             $this->bootFrontendController($feUserAuthentication, $site, $language);
@@ -89,7 +89,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
 
     protected function getLanguage(SiteInterface $site, ServerRequestInterface $request): SiteLanguage
     {
-        $languageUid = (int)$request->getQueryParams()['L'];
+        $languageUid = (int)($request->getQueryParams()['L'] ?? 0);
         foreach ($site->getLanguages() as $siteLanguage) {
             if ($siteLanguage->getLanguageId() === $languageUid) {
                 return $siteLanguage;
