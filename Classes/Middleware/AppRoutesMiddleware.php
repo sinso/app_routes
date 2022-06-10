@@ -65,12 +65,10 @@ class AppRoutesMiddleware implements MiddlewareInterface
         }
         $response = $this->handleWithParameters(
             $parameters,
-            $request->withQueryParams(
-                array_merge(
+            $request->withQueryParams(array_merge(
                 $request->getQueryParams(),
                 $parameters
-            )
-            )
+            ))
         );
         if (!empty($parameters['cache'])) {
             $this->storeCacheEntry($request, $response, $cacheKey);
