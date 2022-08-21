@@ -21,6 +21,7 @@ use TYPO3\CMS\Core\Routing\PageArguments;
 use TYPO3\CMS\Core\Site\Entity\SiteInterface;
 use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
 use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
 
@@ -121,33 +122,49 @@ class AppRoutesMiddleware implements MiddlewareInterface
         if (!$handler instanceof RequestHandlerInterface) {
             throw new \Exception('Route must return a handler parameter which implements ' . RequestHandlerInterface::class, 1604066102);
         }
-
         if ($parameters['requiresTsfe'] ?? false) {
             /** @var FrontendUserAuthentication $feUserAuthentication */
             $feUserAuthentication = $request->getAttribute('frontend.user');
-            $this->bootFrontendController($feUserAuthentication, $site, $language);
+            $this->bootFrontendController($feUserAuthentication, $site, $language, $request);
         }
 
         return $handler->handle($request);
     }
 
-    protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, SiteInterface $site, SiteLanguage $language): void
+    protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, SiteInterface $site, SiteLanguage $language, ServerRequestInterface $request): void
     {
         if ($GLOBALS['TSFE'] instanceof TypoScriptFrontendController) {
             return;
         }
-        // @extensionScannerIgnoreLine - the extension scanner shows a strong warning, because it detects that the fourth constructor argument of TSFE is used which was deprecated in TYPO3 v9, however v10 introduced new constructor arguments which we're using here
-        $controller = GeneralUtility::makeInstance(
-            TypoScriptFrontendController::class,
-            GeneralUtility::makeInstance(Context::class),
-            $site,
-            $language,
-            new PageArguments($site->getRootPageId(), '0', [])
-        );
-        $controller->fe_user = $frontendUserAuthentication;
-        $controller->fetch_the_id();
+
+        if (
+            VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) >=
+            VersionNumberUtility::convertVersionNumberToInteger('11.0.0')
+        ) {
+            $controller = GeneralUtility::makeInstance(
+                TypoScriptFrontendController::class,
+                GeneralUtility::makeInstance(Context::class),
+                $site,
+                $language,
+                new PageArguments($site->getRootPageId(), '0', []),
+                $frontendUserAuthentication
+            );
+            $controller->determineId($request);
+        } else {
+            // for TYPO3 v10
+            $controller = GeneralUtility::makeInstance(
+                TypoScriptFrontendController::class,
+                GeneralUtility::makeInstance(Context::class),
+                $site,
+                $language,
+                new PageArguments($site->getRootPageId(), '0', [])
+            );
+            $controller->fe_user = $frontendUserAuthentication;
+            $controller->fetch_the_id();
+            $controller->settingLanguage();
+        }
+
         $controller->getConfigArray();
-        $controller->settingLanguage();
         $controller->newCObj();
         $GLOBALS['TSFE'] = $controller;
         $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
