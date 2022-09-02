@@ -150,6 +150,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
                 $frontendUserAuthentication
             );
             $controller->determineId($request);
+            $controller->getConfigArray();
         } else {
             // for TYPO3 v10
             $controller = GeneralUtility::makeInstance(
@@ -161,10 +162,10 @@ class AppRoutesMiddleware implements MiddlewareInterface
             );
             $controller->fe_user = $frontendUserAuthentication;
             $controller->fetch_the_id();
+            $controller->getConfigArray();
             $controller->settingLanguage();
         }
 
-        $controller->getConfigArray();
         $controller->newCObj();
         $GLOBALS['TSFE'] = $controller;
         $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
