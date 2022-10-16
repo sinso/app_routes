@@ -4,7 +4,7 @@
   "description": "Easy way to route rest-like URLs to your code",
   "license": "GPL-2.0-only",
   "require": {
-    "typo3/cms-core": "^10.4 || ^11.0"
+    "typo3/cms-core": "^10.4 || ^11.0 || ^12.0"
   },
   "autoload": {
     "psr-4": {

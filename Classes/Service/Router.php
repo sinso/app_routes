@@ -46,7 +46,15 @@ class Router implements SingletonInterface
 
     protected function createRequestContext(): RequestContext
     {
-        if (TYPO3_REQUESTTYPE === TYPO3_REQUESTTYPE_CLI) {
+        if (
+            VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) >=
+            VersionNumberUtility::convertVersionNumberToInteger('11.0.0')
+        ) {
+            $isCliMode = Environment::isCli();
+        } else {
+            $isCliMode = TYPO3_REQUESTTYPE === TYPO3_REQUESTTYPE_CLI;
+        }
+        if ($isCliMode) {
             return new RequestContext();
         }
 
