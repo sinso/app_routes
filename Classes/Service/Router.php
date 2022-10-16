@@ -8,6 +8,7 @@ use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
+use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Http\ServerRequestFactory;
 use TYPO3\CMS\Core\SingletonInterface;
 use TYPO3\CMS\Core\Utility\HttpUtility;
@@ -46,7 +47,15 @@ class Router implements SingletonInterface
 
     protected function createRequestContext(): RequestContext
     {
-        if (TYPO3_REQUESTTYPE === TYPO3_REQUESTTYPE_CLI) {
+        if (
+            VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) >=
+            VersionNumberUtility::convertVersionNumberToInteger('11.0.0')
+        ) {
+            $isCliMode = Environment::isCli();
+        } else {
+            $isCliMode = TYPO3_REQUESTTYPE === TYPO3_REQUESTTYPE_CLI;
+        }
+        if ($isCliMode) {
             return new RequestContext();
         }
 
