@@ -133,7 +133,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
 
     protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, SiteInterface $site, SiteLanguage $language, ServerRequestInterface $request): void
     {
-        if ($GLOBALS['TSFE'] instanceof TypoScriptFrontendController) {
+        if ($this->getTypoScriptFrontendController() instanceof TypoScriptFrontendController) {
             return;
         }
 
@@ -184,6 +184,6 @@ class AppRoutesMiddleware implements MiddlewareInterface
 
     protected function getTypoScriptFrontendController(): ?TypoScriptFrontendController
     {
-        return $GLOBALS['TSFE'];
+        return $GLOBALS['TSFE'] ?? null;
     }
 }
