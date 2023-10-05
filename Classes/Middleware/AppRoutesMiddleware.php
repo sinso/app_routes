@@ -17,9 +17,14 @@ use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Context\LanguageAspectFactory;
 use TYPO3\CMS\Core\Domain\Repository\PageRepository;
 use TYPO3\CMS\Core\Http\Stream;
+use TYPO3\CMS\Core\Information\Typo3Version;
 use TYPO3\CMS\Core\Routing\PageArguments;
+use TYPO3\CMS\Core\Site\Entity\NullSite;
 use TYPO3\CMS\Core\Site\Entity\SiteInterface;
 use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
+use TYPO3\CMS\Core\Site\SiteFinder;
+use TYPO3\CMS\Core\TypoScript\AST\Node\RootNode;
+use TYPO3\CMS\Core\TypoScript\FrontendTypoScript;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
@@ -109,11 +114,13 @@ class AppRoutesMiddleware implements MiddlewareInterface
     {
         /** @var SiteInterface $site */
         $site = $request->getAttribute('site');
+        if (is_null($site) || $site instanceof NullSite) {
+            $sites = GeneralUtility::makeInstance(SiteFinder::class)->getAllSites();
+            $site = $sites[array_key_first($sites)];
+        }
         $language = $this->getLanguage($site, $request);
         $request = $request->withAttribute('language', $language);
         GeneralUtility::makeInstance(Context::class)->setAspect('language', LanguageAspectFactory::createFromSiteLanguage($language));
-
-        $GLOBALS['TYPO3_REQUEST'] = $request;
 
         if (empty($parameters['handler'])) {
             throw new \Exception('Route must return a handler parameter', 1604066046);
@@ -126,7 +133,15 @@ class AppRoutesMiddleware implements MiddlewareInterface
             /** @var FrontendUserAuthentication $feUserAuthentication */
             $feUserAuthentication = $request->getAttribute('frontend.user');
             $this->bootFrontendController($feUserAuthentication, $site, $language, $request);
+
+            if ((new Typo3Version())->getMajorVersion() >= 12) {
+                $frontendTypoScript = new FrontendTypoScript(new RootNode(), []);
+                $request = $request->withAttribute('frontend.controller', $GLOBALS['TSFE']);
+                $request = $request->withAttribute('frontend.typoscript', $frontendTypoScript);
+            }
         }
+
+        $GLOBALS['TYPO3_REQUEST'] = $request;
 
         return $handler->handle($request);
     }
@@ -150,7 +165,9 @@ class AppRoutesMiddleware implements MiddlewareInterface
                 $frontendUserAuthentication
             );
             $controller->determineId($request);
-            $controller->getConfigArray();
+            if ((new Typo3Version())->getMajorVersion() < 12) {
+                $controller->getConfigArray();
+            }
         } else {
             // for TYPO3 v10
             $controller = GeneralUtility::makeInstance(
