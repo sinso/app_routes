@@ -79,6 +79,6 @@ In the configuration module there's an entry "App Routes", that shows all config
 * Only responses for `GET` and `HEAD` requests can be cached.
 * The cache key is built from all query parameters that were matched by your route.
 * If `$GLOBALS['TSFE']` was involved in handling the request and cache tags were added to it via `$tsfe->addCacheTags($tags)`, those are applied to the cache entry.
-* If your request was served from cache and `$GLOBALS['TYPO3_CONF_VARS']['FE']['debug']` is enabled, the response contains a HTTP header indicating when the response was cached.
+* If you have `$GLOBALS['TYPO3_CONF_VARS']['FE']['debug']` enabled, the HTTP response contains headers describing its cache status.
 * Responses with `Cache-Control: no-cache` or `Cache-Control: no-store` are not cached.
 * Responses with `Cache-Control: max-age=300` overwrite the default TTL of the `pages` cache.
