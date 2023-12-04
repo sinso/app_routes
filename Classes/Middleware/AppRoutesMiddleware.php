@@ -77,15 +77,18 @@ class AppRoutesMiddleware implements MiddlewareInterface
             ))
         );
         if (!empty($parameters['cache'])) {
-            $this->storeCacheEntry($request, $response, $cacheKey);
+            $response = $this->storeCacheEntry($request, $response, $cacheKey);
         }
         return $response;
     }
 
-    protected function storeCacheEntry(ServerRequestInterface $request, ResponseInterface $response, string $cacheKey): void
+    protected function storeCacheEntry(ServerRequestInterface $request, ResponseInterface $response, string $cacheKey): ResponseInterface
     {
         if (!in_array($request->getMethod(), self::CACHEABLE_REQUEST_METHODS)) {
-            return;
+            if (!empty($GLOBALS['TYPO3_CONF_VARS']['FE']['debug'])) {
+                $response = $response->withAddedHeader('X-APP-ROUTES-UNCACHED', 'uncacheable request method');
+            }
+            return $response;
         }
         $lifetime = null; // use the default lifetime of the cache
         $cacheControlHeaders = $response->getHeader('Cache-Control');
@@ -93,7 +96,10 @@ class AppRoutesMiddleware implements MiddlewareInterface
             $valueParts = GeneralUtility::trimExplode(',', $cacheControlHeader);
             foreach ($valueParts as $valuePart) {
                 if ($valuePart === 'no-cache' || $valuePart === 'no-store') {
-                    return;
+                    if (!empty($GLOBALS['TYPO3_CONF_VARS']['FE']['debug'])) {
+                        $response = $response->withAddedHeader('X-APP-ROUTES-UNCACHED', 'caching prohibited by Cache-Control header');
+                    }
+                    return $response;
                 }
                 [$key, $value] = GeneralUtility::trimExplode('=', $valuePart);
                 if ($key === 'max-age') {
@@ -101,13 +107,18 @@ class AppRoutesMiddleware implements MiddlewareInterface
                 }
             }
         }
-        $cacheTags = $this->getTypoScriptFrontendController() instanceof TypoScriptFrontendController ? $this->getTypoScriptFrontendController()->getPageCacheTags() : [];
+        $cacheTags = array_unique($this->getTypoScriptFrontendController() instanceof TypoScriptFrontendController ? $this->getTypoScriptFrontendController()->getPageCacheTags() : []);
         $cacheEntry = [
             'response' => $response,
             'responseBody' => (string)$response->getBody(),
             'tstamp' => $GLOBALS['EXEC_TIME'],
         ];
+        if (!empty($GLOBALS['TYPO3_CONF_VARS']['FE']['debug'])) {
+            $response = $response->withAddedHeader('X-APP-ROUTES-CACHED', 'now');
+            $response = $response->withAddedHeader('X-APP-ROUTES-CACHED-WITH-TAGS', implode(',', $cacheTags) ?: 'none');
+        }
         $this->cache->set($cacheKey, $cacheEntry, $cacheTags, $lifetime);
+        return $response;
     }
 
     protected function handleWithParameters(array $parameters, ServerRequestInterface $request): ResponseInterface
