@@ -26,7 +26,6 @@ use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\TypoScript\AST\Node\RootNode;
 use TYPO3\CMS\Core\TypoScript\FrontendTypoScript;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
 use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
 
@@ -163,35 +162,17 @@ class AppRoutesMiddleware implements MiddlewareInterface
             return;
         }
 
-        if (
-            VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) >=
-            VersionNumberUtility::convertVersionNumberToInteger('11.0.0')
-        ) {
-            $controller = GeneralUtility::makeInstance(
-                TypoScriptFrontendController::class,
-                GeneralUtility::makeInstance(Context::class),
-                $site,
-                $language,
-                new PageArguments($site->getRootPageId(), '0', []),
-                $frontendUserAuthentication
-            );
-            $controller->determineId($request);
-            if ((new Typo3Version())->getMajorVersion() < 12) {
-                $controller->getConfigArray();
-            }
-        } else {
-            // for TYPO3 v10
-            $controller = GeneralUtility::makeInstance(
-                TypoScriptFrontendController::class,
-                GeneralUtility::makeInstance(Context::class),
-                $site,
-                $language,
-                new PageArguments($site->getRootPageId(), '0', [])
-            );
-            $controller->fe_user = $frontendUserAuthentication;
-            $controller->fetch_the_id();
+        $controller = GeneralUtility::makeInstance(
+            TypoScriptFrontendController::class,
+            GeneralUtility::makeInstance(Context::class),
+            $site,
+            $language,
+            new PageArguments($site->getRootPageId(), '0', []),
+            $frontendUserAuthentication
+        );
+        $controller->determineId($request);
+        if ((new Typo3Version())->getMajorVersion() < 12) {
             $controller->getConfigArray();
-            $controller->settingLanguage();
         }
 
         $controller->newCObj();
