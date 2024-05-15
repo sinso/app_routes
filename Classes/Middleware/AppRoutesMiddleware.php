@@ -75,7 +75,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
                 $parameters
             ))
         );
-        if (!empty($parameters['cache'])) {
+        if (!empty($parameters['cache']) && $response->getStatusCode() < 400) {
             $response = $this->storeCacheEntry($request, $response, $cacheKey);
         }
         return $response;
