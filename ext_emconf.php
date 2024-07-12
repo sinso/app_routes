@@ -1,4 +1,5 @@
 <?php
+
 $EM_CONF[$_EXTKEY] = [
     'title' => 'App Routes',
     'description' => 'Easy way to route rest-like URLs to your code',
@@ -13,6 +14,6 @@ $EM_CONF[$_EXTKEY] = [
             'typo3' => '11.5.0-12.99.99',
         ],
         'conflicts' => [],
-        'suggests' => []
+        'suggests' => [],
     ],
 ];
