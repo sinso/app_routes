@@ -10,6 +10,7 @@ use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
 use Sinso\AppRoutes\Service\ResponseCachingService;
 use Sinso\AppRoutes\Service\Router;
+use Sinso\AppRoutes\Service\Tsfe;
 use Symfony\Component\Routing\Exception\MethodNotAllowedException;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use TYPO3\CMS\Core\Context\Context;
@@ -85,11 +86,13 @@ class AppRoutesMiddleware implements MiddlewareInterface
         if ($parameters['requiresTsfe'] ?? false) {
             /** @var FrontendUserAuthentication $feUserAuthentication */
             $feUserAuthentication = $request->getAttribute('frontend.user');
-            $this->bootFrontendController($feUserAuthentication, $site, $language, $request);
+            $request = $this->bootFrontendController($feUserAuthentication, $site, $language, $request);
 
             if ((new Typo3Version())->getMajorVersion() >= 12) {
+                $tsfe = $request->getAttribute('frontend.controller');
                 $frontendTypoScript = new FrontendTypoScript(new RootNode(), []);
-                $request = $request->withAttribute('frontend.controller', $GLOBALS['TSFE']);
+                $frontendTypoScript->setSetupTree(new RootNode());
+                $frontendTypoScript->setSetupArray($tsfe->tmpl->setup);
                 $request = $request->withAttribute('frontend.typoscript', $frontendTypoScript);
             }
         }
@@ -99,29 +102,18 @@ class AppRoutesMiddleware implements MiddlewareInterface
         return $handler->handle($request);
     }
 
-    protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, SiteInterface $site, SiteLanguage $language, ServerRequestInterface $request): void
+    protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, SiteInterface $site, SiteLanguage $language, ServerRequestInterface $request): ServerRequestInterface
     {
         if ($this->getTypoScriptFrontendController() instanceof TypoScriptFrontendController) {
-            return;
+            return $request;
         }
 
-        /** @var TypoScriptFrontendController $controller */
-        $controller = GeneralUtility::makeInstance(
-            TypoScriptFrontendController::class,
-            GeneralUtility::makeInstance(Context::class),
-            $site,
-            $language,
-            new PageArguments($site->getRootPageId(), '0', []),
-            $frontendUserAuthentication
-        );
-        $controller->determineId($request);
-        if ((new Typo3Version())->getMajorVersion() < 12) {
-            $controller->getConfigArray();
-        }
-
+        $tsfeInitializationService = GeneralUtility::makeInstance(Tsfe::class);
+        $controller = $tsfeInitializationService->getTsfeByPageIdAndLanguageId($site->getRootPageId(), $language->getLanguageId());
         $controller->newCObj($request);
         $GLOBALS['TSFE'] = $controller;
         $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
+        return $request->withAttribute('frontend.controller', $controller);
     }
 
     protected function getLanguage(SiteInterface $site, ServerRequestInterface $request): SiteLanguage
