@@ -111,6 +111,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
         $tsfeInitializationService = GeneralUtility::makeInstance(Tsfe::class);
         $controller = $tsfeInitializationService->getTsfeByPageIdAndLanguageId($site->getRootPageId(), $language->getLanguageId());
         $controller->newCObj($request);
+        $controller->fe_user = $frontendUserAuthentication;
         $GLOBALS['TSFE'] = $controller;
         $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
         return $request->withAttribute('frontend.controller', $controller);
