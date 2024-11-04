@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+
 namespace Sinso\AppRoutes\Service;
 
 use TYPO3\CMS\Core\Cache\CacheManager;
