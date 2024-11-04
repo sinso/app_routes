@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+
 namespace Sinso\AppRoutes\Service;
 
 use Symfony\Component\Routing\Generator\UrlGenerator;
@@ -8,66 +9,54 @@ use Symfony\Component\Routing\Matcher\UrlMatcher;
 use Symfony\Component\Routing\RequestContext;
 use Symfony\Component\Routing\Route;
 use Symfony\Component\Routing\RouteCollection;
+use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 use TYPO3\CMS\Core\Core\Environment;
 use TYPO3\CMS\Core\Http\ServerRequestFactory;
 use TYPO3\CMS\Core\SingletonInterface;
-use TYPO3\CMS\Core\Utility\HttpUtility;
-use TYPO3\CMS\Core\Utility\VersionNumberUtility;
 
 class Router implements SingletonInterface
 {
-    /**
-     * @var RouteCollection
-     */
-    protected $routes;
+    public function __construct(
+        private readonly CacheManager $cacheManager,
+        private readonly RoutesConfigurationLoader $routeFilesLoader,
+    ) {}
 
-    /**
-     * @var UrlGenerator
-     */
-    protected $urlGenerator;
-
-    /**
-     * @var UrlMatcher
-     */
-    protected $urlMatcher;
-
-    public function __construct(RoutesConfigurationLoader $routeFilesLoader)
+    public function getRoutes(): RouteCollection
     {
+        $cacheKey = 'appRoutes_Router_routes';
+        if ($this->getCache()->has($cacheKey)) {
+            return $this->getCache()->get($cacheKey);
+        }
         $routes = new RouteCollection();
-        foreach ($routeFilesLoader->getRoutesConfiguration() as $appName => $appRoutesConfiguration) {
+        foreach ($this->routeFilesLoader->getRoutesConfiguration() as $appName => $appRoutesConfiguration) {
             $prefix = $appRoutesConfiguration['prefix'] ?? '';
             $routes = $this->populateRouteCollection($routes, $appRoutesConfiguration['routes'], $appName, $prefix);
         }
+        $this->getCache()->set($cacheKey, $routes);
+        return $routes;
+    }
 
+    public function getUrlGenerator(): UrlGenerator
+    {
         $context = $this->createRequestContext();
-        $this->urlMatcher = new UrlMatcher($routes, $context);
-        $this->urlGenerator = new UrlGenerator($routes, $context);
-        $this->routes = $routes;
+        return new UrlGenerator($this->getRoutes(), $context);
+    }
+
+    public function getUrlMatcher(): UrlMatcher
+    {
+        $context = $this->createRequestContext();
+        return new UrlMatcher($this->getRoutes(), $context);
     }
 
     protected function createRequestContext(): RequestContext
     {
-        if (
-            VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) >=
-            VersionNumberUtility::convertVersionNumberToInteger('11.0.0')
-        ) {
-            $isCliMode = Environment::isCli();
-        } else {
-            $isCliMode = TYPO3_REQUESTTYPE === TYPO3_REQUESTTYPE_CLI;
-        }
-        if ($isCliMode) {
+        if (Environment::isCli()) {
             return new RequestContext();
         }
 
         $request = ServerRequestFactory::fromGlobals();
-        if (
-            VersionNumberUtility::convertVersionNumberToInteger(VersionNumberUtility::getCurrentTypo3Version()) >=
-            VersionNumberUtility::convertVersionNumberToInteger('11.2.0')
-        ) {
-            $host = (string)idn_to_ascii($request->getUri()->getHost());
-        } else {
-            $host = (string)HttpUtility::idn_to_ascii($request->getUri()->getHost());
-        }
+        $host = (string)idn_to_ascii($request->getUri()->getHost());
         return new RequestContext(
             '',
             $request->getMethod(),
@@ -97,18 +86,8 @@ class Router implements SingletonInterface
         return $routes;
     }
 
-    public function getRoutes(): RouteCollection
+    private function getCache(): FrontendInterface
     {
-        return $this->routes;
-    }
-
-    public function getUrlGenerator(): UrlGenerator
-    {
-        return $this->urlGenerator;
-    }
-
-    public function getUrlMatcher(): UrlMatcher
-    {
-        return $this->urlMatcher;
+        return $this->cacheManager->getCache('runtime');
     }
 }
