@@ -71,7 +71,7 @@ If you need to generate a URL in a Fluid template, there's also a ViewHelper for
 In the configuration module there's an entry "App Routes", that shows all configured routes.
 ***Requires TYPO3 v11***
 
-### Caching
+### Server Side Caching
 
 * Caching can be enabled per route via configuration `defaults.cache: true`.
 * The TYPO3 `pages` cache is used to cache API responses.
@@ -82,3 +82,9 @@ In the configuration module there's an entry "App Routes", that shows all config
 * If you have `$GLOBALS['TYPO3_CONF_VARS']['FE']['debug']` enabled, the HTTP response contains headers describing its cache status.
 * Responses with `Cache-Control: no-cache` or `Cache-Control: no-store` are not cached.
 * Responses with `Cache-Control: max-age=300` overwrite the default TTL of the `pages` cache.
+
+### ETag
+
+Setting an `ETag` header in your response will enable conditional requests, i.e. the client doesn't need to download the response body if it already has the latest version.
+
+* If your response contains an `ETag` header and it matches the `If-None-Match` header of the request, the response HTTP status will be `304 Not Modified` and the response body will be empty.
