@@ -16,8 +16,8 @@ use Symfony\Component\Routing\Exception\ResourceNotFoundException;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Context\LanguageAspectFactory;
 use TYPO3\CMS\Core\Domain\Repository\PageRepository;
+use TYPO3\CMS\Core\Http\Stream;
 use TYPO3\CMS\Core\Information\Typo3Version;
-use TYPO3\CMS\Core\Routing\PageArguments;
 use TYPO3\CMS\Core\Site\Entity\NullSite;
 use TYPO3\CMS\Core\Site\Entity\SiteInterface;
 use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
@@ -47,6 +47,14 @@ class AppRoutesMiddleware implements MiddlewareInterface
             // app routes did not match. go on with regular TYPO3 stack.
             return $handler->handle($request);
         }
+        $response = $this->handleRequestCached($parameters, $request);
+        $response = $this->replaceWithNotModifiedResponse($request, $response);
+
+        return $response;
+    }
+
+    public function handleRequestCached(array $parameters, ServerRequestInterface $request): ResponseInterface
+    {
         $cacheKey = 'appRoutes_' . md5(serialize($parameters));
         if (!empty($parameters['cache']) && $this->responseCachingService->has($cacheKey) && $this->responseCachingService->isCacheable($request)) {
             return $this->responseCachingService->serveFromCache($cacheKey);
@@ -100,6 +108,17 @@ class AppRoutesMiddleware implements MiddlewareInterface
         $GLOBALS['TYPO3_REQUEST'] = $request;
 
         return $handler->handle($request);
+    }
+
+    protected function replaceWithNotModifiedResponse(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
+    {
+        if ($response->getStatusCode() !== 200) {
+            return $response;
+        }
+        if ($request->hasHeader('If-None-Match') && $response->hasHeader('ETag') && $request->getHeader('If-None-Match')[0] === $response->getHeader('ETag')[0]) {
+            return $response->withBody(new Stream(fopen('php://temp', 'r+')))->withStatus(304);
+        }
+        return $response;
     }
 
     protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, SiteInterface $site, SiteLanguage $language, ServerRequestInterface $request): ServerRequestInterface
