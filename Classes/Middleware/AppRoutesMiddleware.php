@@ -55,7 +55,12 @@ class AppRoutesMiddleware implements MiddlewareInterface
 
     public function handleRequestCached(array $parameters, ServerRequestInterface $request): ResponseInterface
     {
-        $cacheKey = 'appRoutes_' . md5(serialize($parameters));
+        $ingredients = [
+            'routeParameters' => $parameters,
+            'language' => (int)($request->getAttribute('language')?->getLanguageId() ?? $request->getQueryParams()['L'] ?? 0),
+            'site' => $request->getAttribute('site')?->getIdentifier(),
+        ];
+        $cacheKey = 'appRoutes_' . md5(serialize($ingredients));
         if (!empty($parameters['cache']) && $this->responseCachingService->has($cacheKey) && $this->responseCachingService->isCacheable($request)) {
             return $this->responseCachingService->serveFromCache($cacheKey);
         }
