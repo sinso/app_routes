@@ -1,9 +1,11 @@
 <?php
 
+use Sinso\AppRoutes\Middleware\AppRoutesMiddleware;
+
 return [
     'frontend' => [
         'sinso/app-routes/route' => [
-            'target' => \Sinso\AppRoutes\Middleware\AppRoutesMiddleware::class,
+            'target' => AppRoutesMiddleware::class,
             'after' => [
                 'typo3/cms-frontend/site',
                 'typo3/cms-frontend/authentication',

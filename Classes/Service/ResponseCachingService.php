@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Sinso\AppRoutes\Service;
 
+use TYPO3\CMS\Core\Context\Context;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\Cache\CacheManager;
@@ -81,7 +82,7 @@ class ResponseCachingService
         $cacheEntry = [
             'response' => $response,
             'responseBody' => (string)$response->getBody(),
-            'tstamp' => $GLOBALS['EXEC_TIME'],
+            'tstamp' => GeneralUtility::makeInstance(Context::class)->getPropertyFromAspect('date', 'timestamp'),
         ];
         if (!empty($GLOBALS['TYPO3_CONF_VARS']['FE']['debug'])) {
             $response = $response->withAddedHeader('X-APP-ROUTES-CACHED', 'now');
