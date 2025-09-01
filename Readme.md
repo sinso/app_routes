@@ -41,7 +41,8 @@ Everything that is available as YAML configuration option in `symfony/routing` s
 This package offers these additional options:
 
 * `defaults.cache: true` - If true, then responses are cached (see more details below). (default: `false`)
-* `defaults.requiresTsfe: true` - If true, then `$GLOBALS['TSFE']` will be initialized before your handler is called (default: `false`).
+* `defaults.requiresTsfe: true` - If true, then the `frontend.controller` request attribute will be initialized before your handler is called (default: `false`).
+* `defaults.TypoScript: true` - If true, then the `frontend.typoscript` request attribute will be initialized before your handler is called (default: `false`).
 
 ### Generate Route URLs
 
@@ -69,7 +70,6 @@ If you need to generate a URL in a Fluid template, there's also a ViewHelper for
 ### Configuration Module
 
 In the configuration module there's an entry "App Routes", that shows all configured routes.
-***Requires TYPO3 v11***
 
 ### Server Side Caching
 
@@ -78,7 +78,7 @@ In the configuration module there's an entry "App Routes", that shows all config
 * Your request handler will not be called at all if the request can be served from cache.
 * Only responses for `GET` and `HEAD` requests can be cached.
 * The cache key is built from all query parameters that were matched by your route.
-* If `$GLOBALS['TSFE']` was involved in handling the request and cache tags were added to it via `$tsfe->addCacheTags($tags)`, those are applied to the cache entry.
+* Any cache tags added to TYPO3's `CacheDataCollector` (`$request->getAttribute('frontend.cache.collector')`) are applied to the cache entry.
 * If you have `$GLOBALS['TYPO3_CONF_VARS']['FE']['debug']` enabled, the HTTP response contains headers describing its cache status.
 * Responses with `Cache-Control: no-cache` or `Cache-Control: no-store` are not cached.
 * Responses with `Cache-Control: max-age=300` overwrite the default TTL of the `pages` cache.

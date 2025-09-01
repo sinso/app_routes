@@ -8,49 +8,39 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Psr\Http\Server\MiddlewareInterface;
 use Psr\Http\Server\RequestHandlerInterface;
+use Sinso\AppRoutes\Service\FrontendInitialization;
 use Sinso\AppRoutes\Service\ResponseCachingService;
 use Sinso\AppRoutes\Service\Router;
-use Sinso\AppRoutes\Service\Tsfe;
 use Symfony\Component\Routing\Exception\MethodNotAllowedException;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
+use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Context\LanguageAspectFactory;
-use TYPO3\CMS\Core\Domain\Repository\PageRepository;
 use TYPO3\CMS\Core\Http\Stream;
-use TYPO3\CMS\Core\Information\Typo3Version;
-use TYPO3\CMS\Core\Site\Entity\NullSite;
-use TYPO3\CMS\Core\Site\Entity\SiteInterface;
-use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
-use TYPO3\CMS\Core\Site\SiteFinder;
-use TYPO3\CMS\Core\TypoScript\AST\Node\RootNode;
-use TYPO3\CMS\Core\TypoScript\FrontendTypoScript;
+use TYPO3\CMS\Core\Routing\PageArguments;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Frontend\Authentication\FrontendUserAuthentication;
-use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
+use TYPO3\CMS\Frontend\Aspect\PreviewAspect;
+use TYPO3\CMS\Frontend\Page\PageInformation;
 
 class AppRoutesMiddleware implements MiddlewareInterface
 {
-    private Router $router;
-    private ResponseCachingService $responseCachingService;
-
-    public function __construct(Router $router, ResponseCachingService $responseCachingService)
-    {
-        $this->router = $router;
-        $this->responseCachingService = $responseCachingService;
-    }
+    public function __construct(
+        private readonly Context $context,
+        private readonly FrontendInitialization $frontendInitialization,
+        private readonly ResponseCachingService $responseCachingService,
+        private readonly Router $router,
+    ) {}
 
     public function process(ServerRequestInterface $request, RequestHandlerInterface $handler = null): ResponseInterface
     {
         try {
             $parameters = $this->router->getUrlMatcher()->match($request->getUri()->getPath());
-        } catch (MethodNotAllowedException|ResourceNotFoundException $e) {
+        } catch (MethodNotAllowedException|ResourceNotFoundException) {
             // app routes did not match. go on with regular TYPO3 stack.
             return $handler->handle($request);
         }
         $response = $this->handleRequestCached($parameters, $request);
-        $response = $this->replaceWithNotModifiedResponse($request, $response);
-
-        return $response;
+        return $this->replaceWithNotModifiedResponse($request, $response);
     }
 
     public function handleRequestCached(array $parameters, ServerRequestInterface $request): ResponseInterface
@@ -64,6 +54,8 @@ class AppRoutesMiddleware implements MiddlewareInterface
         if (!empty($parameters['cache']) && $this->responseCachingService->has($cacheKey) && $this->responseCachingService->isCacheable($request)) {
             return $this->responseCachingService->serveFromCache($cacheKey);
         }
+
+        // todo: instead of mixing all routing $parameters into query parameters, we should add an attribute to bundle that data
         $response = $this->handleWithParameters(
             $parameters,
             $request->withQueryParams(array_merge(
@@ -79,15 +71,8 @@ class AppRoutesMiddleware implements MiddlewareInterface
 
     protected function handleWithParameters(array $parameters, ServerRequestInterface $request): ResponseInterface
     {
-        /** @var SiteInterface $site */
-        $site = $request->getAttribute('site');
-        if (is_null($site) || $site instanceof NullSite) {
-            $sites = GeneralUtility::makeInstance(SiteFinder::class)->getAllSites();
-            $site = $sites[array_key_first($sites)];
-        }
-        $language = $this->getLanguage($site, $request);
-        $request = $request->withAttribute('language', $language);
-        GeneralUtility::makeInstance(Context::class)->setAspect('language', LanguageAspectFactory::createFromSiteLanguage($language));
+        $request = $this->initializeNeededFrontendComponents($parameters, $request);
+        $GLOBALS['TYPO3_REQUEST'] = $request;
 
         if (empty($parameters['handler'])) {
             throw new \Exception('Route must return a handler parameter', 1604066046);
@@ -96,23 +81,46 @@ class AppRoutesMiddleware implements MiddlewareInterface
         if (!$handler instanceof RequestHandlerInterface) {
             throw new \Exception('Route must return a handler parameter which implements ' . RequestHandlerInterface::class, 1604066102);
         }
-        if ($parameters['requiresTsfe'] ?? false) {
-            /** @var FrontendUserAuthentication $feUserAuthentication */
-            $feUserAuthentication = $request->getAttribute('frontend.user');
-            $request = $this->bootFrontendController($feUserAuthentication, $site, $language, $request);
-
-            if ((new Typo3Version())->getMajorVersion() >= 12) {
-                $tsfe = $request->getAttribute('frontend.controller');
-                $frontendTypoScript = new FrontendTypoScript(new RootNode(), []);
-                $frontendTypoScript->setSetupTree(new RootNode());
-                $frontendTypoScript->setSetupArray($tsfe->tmpl->setup);
-                $request = $request->withAttribute('frontend.typoscript', $frontendTypoScript);
-            }
-        }
-
-        $GLOBALS['TYPO3_REQUEST'] = $request;
 
         return $handler->handle($request);
+    }
+
+    protected function initializeNeededFrontendComponents(array $parameters, ServerRequestInterface $request): ServerRequestInterface
+    {
+        $site = $request->getAttribute('site');
+
+        // set PageArguments as routing attribute
+        $keysToRemove = ['handler', 'requiresTsfe', 'requiresTypoScript', 'cache', 'L', '_route'];
+        $remainingArguments = array_diff_key($request->getQueryParams(), array_flip($keysToRemove));
+        $request = $request->withAttribute('routing', new PageArguments($site->getRootPageId(), '0', [], [], $remainingArguments));
+
+        // language
+        $language = $this->frontendInitialization->getLanguage($request);
+        $request = $request->withAttribute('language', $language);
+        $this->context->setAspect('language', LanguageAspectFactory::createFromSiteLanguage($language));
+
+        // context
+        if (!$this->context->hasAspect('frontend.preview')) {
+            $this->context->setAspect('frontend.preview', new PreviewAspect());
+        }
+
+        // page information
+        $pageInformation = $this->frontendInitialization->createPageInformation($request);
+        $request = $request->withAttribute('frontend.page.information', $pageInformation);
+
+        // TSFE
+        if ($parameters['requiresTsfe'] ?? false) {
+            $tsfe = $this->frontendInitialization->createTyposcriptFrontendController($request);
+            $request = $request->withAttribute('frontend.controller', $tsfe);
+        }
+
+        // TypoScript
+        if ($parameters['requiresTypoScript'] ?? false) {
+            $frontendTypoScript = $this->frontendInitialization->createFrontendTypoScript($request);
+            $request = $request->withAttribute('frontend.typoscript', $frontendTypoScript);
+        }
+
+        return $request;
     }
 
     protected function replaceWithNotModifiedResponse(ServerRequestInterface $request, ResponseInterface $response): ResponseInterface
@@ -124,36 +132,5 @@ class AppRoutesMiddleware implements MiddlewareInterface
             return $response->withBody(new Stream(fopen('php://temp', 'r+')))->withStatus(304);
         }
         return $response;
-    }
-
-    protected function bootFrontendController(FrontendUserAuthentication $frontendUserAuthentication, SiteInterface $site, SiteLanguage $language, ServerRequestInterface $request): ServerRequestInterface
-    {
-        if ($this->getTypoScriptFrontendController() instanceof TypoScriptFrontendController) {
-            return $request;
-        }
-
-        $tsfeInitializationService = GeneralUtility::makeInstance(Tsfe::class);
-        $controller = $tsfeInitializationService->getTsfeByPageIdAndLanguageId($site->getRootPageId(), $language->getLanguageId());
-        $controller->newCObj($request);
-        $controller->fe_user = $frontendUserAuthentication;
-        $GLOBALS['TSFE'] = $controller;
-        $GLOBALS['TSFE']->sys_page = GeneralUtility::makeInstance(PageRepository::class);
-        return $request->withAttribute('frontend.controller', $controller);
-    }
-
-    protected function getLanguage(SiteInterface $site, ServerRequestInterface $request): SiteLanguage
-    {
-        $languageUid = (int)($request->getQueryParams()['L'] ?? 0);
-        foreach ($site->getLanguages() as $siteLanguage) {
-            if ($siteLanguage->getLanguageId() === $languageUid) {
-                return $siteLanguage;
-            }
-        }
-        return $site->getDefaultLanguage();
-    }
-
-    protected function getTypoScriptFrontendController(): ?TypoScriptFrontendController
-    {
-        return $GLOBALS['TSFE'] ?? null;
     }
 }
