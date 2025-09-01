@@ -10,6 +10,7 @@ return [
             ],
             'before' => [
                 'typo3/cms-frontend/base-redirect-resolver',
+                'typo3/cms-frontend/prepare-tsfe-rendering',
             ],
         ],
     ],
