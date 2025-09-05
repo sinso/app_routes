@@ -52,6 +52,8 @@ class AppRoutesMiddleware implements MiddlewareInterface
         if (!empty($parameters['cache']) && $this->responseCachingService->has($cacheKey) && $this->responseCachingService->isCacheable($request)) {
             return $this->responseCachingService->serveFromCache($cacheKey);
         }
+
+        // todo: instead of mixing all routing $parameters into query parameters, we should add an attribute to bundle that data
         $response = $this->handleWithParameters(
             $parameters,
             $request->withQueryParams(array_merge(
@@ -84,7 +86,9 @@ class AppRoutesMiddleware implements MiddlewareInterface
     protected function initializeNeededFrontendComponents(array $parameters, ServerRequestInterface $request): ServerRequestInterface
     {
         // set PageArguments as routing attribute
-        $request = $request->withAttribute('routing', new PageArguments($request->getAttribute('site')->getRootPageId(), '0', []));
+        $keysToRemove = ['handler', 'requiresTsfe', 'requiresTypoScript', 'cache', 'L', '_route'];
+        $remainingArguments = array_diff_key($request->getQueryParams(), array_flip($keysToRemove));
+        $request = $request->withAttribute('routing', new PageArguments($request->getAttribute('site')->getRootPageId(), '0', [], [], $remainingArguments));
 
         // language
         $language = $this->frontendInitialization->getLanguage($request);
