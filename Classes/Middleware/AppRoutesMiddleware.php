@@ -13,12 +13,14 @@ use Sinso\AppRoutes\Service\ResponseCachingService;
 use Sinso\AppRoutes\Service\Router;
 use Symfony\Component\Routing\Exception\MethodNotAllowedException;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
+use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Context\LanguageAspectFactory;
 use TYPO3\CMS\Core\Http\Stream;
 use TYPO3\CMS\Core\Routing\PageArguments;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\Aspect\PreviewAspect;
+use TYPO3\CMS\Frontend\Page\PageInformation;
 
 class AppRoutesMiddleware implements MiddlewareInterface
 {
@@ -85,10 +87,12 @@ class AppRoutesMiddleware implements MiddlewareInterface
 
     protected function initializeNeededFrontendComponents(array $parameters, ServerRequestInterface $request): ServerRequestInterface
     {
+        $site = $request->getAttribute('site');
+
         // set PageArguments as routing attribute
         $keysToRemove = ['handler', 'requiresTsfe', 'requiresTypoScript', 'cache', 'L', '_route'];
         $remainingArguments = array_diff_key($request->getQueryParams(), array_flip($keysToRemove));
-        $request = $request->withAttribute('routing', new PageArguments($request->getAttribute('site')->getRootPageId(), '0', [], [], $remainingArguments));
+        $request = $request->withAttribute('routing', new PageArguments($site->getRootPageId(), '0', [], [], $remainingArguments));
 
         // language
         $language = $this->frontendInitialization->getLanguage($request);
@@ -99,6 +103,10 @@ class AppRoutesMiddleware implements MiddlewareInterface
         if (!$this->context->hasAspect('frontend.preview')) {
             $this->context->setAspect('frontend.preview', new PreviewAspect());
         }
+
+        // page information
+        $pageInformation = $this->frontendInitialization->createPageInformation($request);
+        $request = $request->withAttribute('frontend.page.information', $pageInformation);
 
         // TSFE
         if ($parameters['requiresTsfe'] ?? false) {
