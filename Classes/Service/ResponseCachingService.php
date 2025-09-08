@@ -7,6 +7,7 @@ namespace Sinso\AppRoutes\Service;
 use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use TYPO3\CMS\Core\Cache\CacheManager;
+use TYPO3\CMS\Core\Cache\CacheTag;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 use TYPO3\CMS\Core\Http\Stream;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
@@ -77,7 +78,9 @@ class ResponseCachingService
                 }
             }
         }
-        $cacheTags = array_unique($this->getTypoScriptFrontendController() instanceof TypoScriptFrontendController ? $this->getTypoScriptFrontendController()->getPageCacheTags() : []);
+        $cacheTagsFromCacheCollector = array_map(fn(CacheTag $cacheTag) => $cacheTag->name, $request->getAttribute('frontend.cache.collector')->getCacheTags());
+        $cacheTagsFromTsfe = $this->getTypoScriptFrontendController() instanceof TypoScriptFrontendController ? $this->getTypoScriptFrontendController()->getPageCacheTags() : [];
+        $cacheTags = array_unique(array_merge($cacheTagsFromCacheCollector, $cacheTagsFromTsfe));
         $cacheEntry = [
             'response' => $response,
             'responseBody' => (string)$response->getBody(),
