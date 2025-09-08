@@ -15,6 +15,7 @@ use TYPO3\CMS\Core\Site\SiteFinder;
 use TYPO3\CMS\Core\TypoScript\FrontendTypoScript;
 use TYPO3\CMS\Core\TypoScript\FrontendTypoScriptFactory;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
+use TYPO3\CMS\Frontend\ContentObject\ContentObjectRenderer;
 use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
 use TYPO3\CMS\Frontend\Page\PageInformation;
 use TYPO3\CMS\Frontend\Page\PageInformationFactory;
@@ -40,11 +41,15 @@ class FrontendInitialization
         $controller->contentPid = $pageInformation->getContentFromPid();
         $controller->rootLine = $pageInformation->getRootLine();
         $controller->config['rootLine'] = $pageInformation->getLocalRootLine();
-
         $controller->register['SYS_LASTCHANGED'] = (int)$pageInformation->getPageRecord()['tstamp'];
         if ($controller->register['SYS_LASTCHANGED'] < (int)$pageInformation->getPageRecord()['SYS_LASTCHANGED']) {
             $controller->register['SYS_LASTCHANGED'] = (int)$pageInformation->getPageRecord()['SYS_LASTCHANGED'];
         }
+
+        $contentObjectRenderer = GeneralUtility::makeInstance(ContentObjectRenderer::class);
+        $contentObjectRenderer->start($pageInformation->getPageRecord(), 'pages');
+        $controller->cObj = $contentObjectRenderer;
+
         $request = $request->withAttribute('frontend.controller', $controller);
         $GLOBALS['TYPO3_REQUEST'] = $request;
         $GLOBALS['TSFE'] = $controller;
