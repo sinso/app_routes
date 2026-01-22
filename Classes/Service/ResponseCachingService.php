@@ -11,7 +11,6 @@ use TYPO3\CMS\Core\Cache\CacheTag;
 use TYPO3\CMS\Core\Cache\Frontend\FrontendInterface;
 use TYPO3\CMS\Core\Http\Stream;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
-use TYPO3\CMS\Frontend\Controller\TypoScriptFrontendController;
 
 class ResponseCachingService
 {
@@ -78,9 +77,12 @@ class ResponseCachingService
                 }
             }
         }
-        $cacheTagsFromCacheCollector = array_map(fn(CacheTag $cacheTag) => $cacheTag->name, $request->getAttribute('frontend.cache.collector')->getCacheTags());
-        $cacheTagsFromTsfe = $this->getTypoScriptFrontendController() instanceof TypoScriptFrontendController ? $this->getTypoScriptFrontendController()->getPageCacheTags() : [];
-        $cacheTags = array_unique(array_merge($cacheTagsFromCacheCollector, $cacheTagsFromTsfe));
+        $cacheTags = array_unique(
+            array_map(
+                static fn(CacheTag $cacheTag) => $cacheTag->name,
+                $request->getAttribute('frontend.cache.collector')->getCacheTags()
+            )
+        );
         $cacheEntry = [
             'response' => $response,
             'responseBody' => (string)$response->getBody(),
@@ -94,10 +96,5 @@ class ResponseCachingService
         }
         $this->cache->set($cacheKey, $cacheEntry, $cacheTags, $lifetime);
         return $response;
-    }
-
-    protected function getTypoScriptFrontendController(): ?TypoScriptFrontendController
-    {
-        return $GLOBALS['TSFE'] ?? null;
     }
 }
