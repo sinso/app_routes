@@ -13,7 +13,6 @@ use Sinso\AppRoutes\Service\ResponseCachingService;
 use Sinso\AppRoutes\Service\Router;
 use Symfony\Component\Routing\Exception\MethodNotAllowedException;
 use Symfony\Component\Routing\Exception\ResourceNotFoundException;
-use TYPO3\CMS\Backend\Utility\BackendUtility;
 use TYPO3\CMS\Core\Context\Context;
 use TYPO3\CMS\Core\Context\LanguageAspectFactory;
 use TYPO3\CMS\Core\Http\Stream;
@@ -31,7 +30,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
         private readonly Router $router,
     ) {}
 
-    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler = null): ResponseInterface
+    public function process(ServerRequestInterface $request, RequestHandlerInterface $handler): ResponseInterface
     {
         try {
             $parameters = $this->router->getUrlMatcher()->match($request->getUri()->getPath());
