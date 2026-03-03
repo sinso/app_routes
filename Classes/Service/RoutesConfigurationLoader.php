@@ -13,36 +13,20 @@ class RoutesConfigurationLoader
 {
     public const APP_ROUTES_YAML_PATH = 'Configuration/AppRoutes.yaml';
 
-    /**
-     * @var FrontendInterface
-     */
-    protected $cache;
+    private readonly FrontendInterface $cache;
+    private array $routesConfiguration;
 
-    /**
-     * @var PackageManager
-     */
-    protected $packageManager;
-
-    /**
-     * @var array
-     */
-    protected $routesConfiguration;
-
-    /**
-     * @var YamlFileLoader
-     */
-    protected $yamlFileLoader;
-
-    public function __construct(CacheManager $cacheManager, PackageManager $packageManager, YamlFileLoader $yamlFileLoader)
-    {
+    public function __construct(
+        CacheManager $cacheManager,
+        private readonly PackageManager $packageManager,
+        private readonly YamlFileLoader $yamlFileLoader,
+    ) {
         $this->cache = $cacheManager->getCache('app_routes');
-        $this->packageManager = $packageManager;
-        $this->yamlFileLoader = $yamlFileLoader;
     }
 
     public function getRoutesConfiguration(): array
     {
-        if (!is_array($this->routesConfiguration)) {
+        if (!isset($this->routesConfiguration)) {
             $this->loadRoutesConfiguration();
         }
         return $this->routesConfiguration;
