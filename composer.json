@@ -4,13 +4,13 @@
   "description": "Easy way to route rest-like URLs to your code",
   "license": "GPL-2.0-only",
   "require": {
-    "typo3/cms-core": "^13.4 || ^14.0"
+    "typo3/cms-core": "^14.0"
   },
   "require-dev": {
     "phpstan/phpstan": "^2.1",
     "phpunit/phpunit": "^11.0",
-    "typo3/cms-frontend": "^13.4",
-    "typo3/cms-lowlevel": "^13.4",
+    "typo3/cms-frontend": "^14.0",
+    "typo3/cms-lowlevel": "^14.0",
     "typo3/testing-framework": "^9.0"
   },
   "scripts": {

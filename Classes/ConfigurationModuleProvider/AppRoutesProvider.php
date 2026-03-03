@@ -9,15 +9,9 @@ use TYPO3\CMS\Lowlevel\ConfigurationModuleProvider\AbstractProvider;
 
 class AppRoutesProvider extends AbstractProvider
 {
-    /**
-     * @var RoutesConfigurationLoader
-     */
-    protected $routesConfigurationLoader;
-
-    public function __construct(RoutesConfigurationLoader $routesConfigurationLoader)
-    {
-        $this->routesConfigurationLoader = $routesConfigurationLoader;
-    }
+    public function __construct(
+        private readonly RoutesConfigurationLoader $routesConfigurationLoader,
+    ) {}
 
     public function getConfiguration(): array
     {

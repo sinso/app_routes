@@ -20,6 +20,7 @@ use TYPO3\CMS\Core\Routing\PageArguments;
 use TYPO3\CMS\Core\Utility\GeneralUtility;
 use TYPO3\CMS\Frontend\Aspect\PreviewAspect;
 use TYPO3\CMS\Frontend\Page\PageInformation;
+use TYPO3\CMS\Frontend\Page\PageParts;
 
 class AppRoutesMiddleware implements MiddlewareInterface
 {
@@ -89,7 +90,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
         $site = $request->getAttribute('site');
 
         // set PageArguments as routing attribute
-        $keysToRemove = ['handler', 'requiresTsfe', 'requiresTypoScript', 'cache', 'L', '_route'];
+        $keysToRemove = ['handler', 'requiresTypoScript', 'cache', 'L', '_route'];
         $remainingArguments = array_diff_key($request->getQueryParams(), array_flip($keysToRemove));
         $request = $request->withAttribute('routing', new PageArguments($site->getRootPageId(), '0', [], [], $remainingArguments));
 
@@ -107,11 +108,13 @@ class AppRoutesMiddleware implements MiddlewareInterface
         $pageInformation = $this->frontendInitialization->createPageInformation($request);
         $request = $request->withAttribute('frontend.page.information', $pageInformation);
 
-        // TSFE
-        if ($parameters['requiresTsfe'] ?? false) {
-            $tsfe = $this->frontendInitialization->createTyposcriptFrontendController($request);
-            $request = $request->withAttribute('frontend.controller', $tsfe);
+        $pageParts = new PageParts();
+        $lastChanged = (int)$pageInformation->getPageRecord()['tstamp'];
+        if ($lastChanged < (int)$pageInformation->getPageRecord()['SYS_LASTCHANGED']) {
+            $lastChanged = (int)$pageInformation->getPageRecord()['SYS_LASTCHANGED'];
         }
+        $pageParts->setLastChanged($lastChanged);
+        $request = $request->withAttribute('frontend.page.parts', $pageParts);
 
         // TypoScript
         if ($parameters['requiresTypoScript'] ?? false) {
