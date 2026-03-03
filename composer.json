@@ -8,11 +8,14 @@
   },
   "require-dev": {
     "phpstan/phpstan": "^2.1",
+    "phpunit/phpunit": "^11.0",
     "typo3/cms-frontend": "^13.4",
-    "typo3/cms-lowlevel": "^13.4"
+    "typo3/cms-lowlevel": "^13.4",
+    "typo3/testing-framework": "^9.0"
   },
   "scripts": {
-    "phpstan": "phpstan analyze -c phpstan.neon --memory-limit=1G"
+    "phpstan": "phpstan analyze -c phpstan.neon --memory-limit=1G",
+    "test": "phpunit -c phpunit.xml"
   },
   "config": {
     "allow-plugins": {
@@ -23,6 +26,11 @@
   "autoload": {
     "psr-4": {
       "Sinso\\AppRoutes\\": "Classes"
+    }
+  },
+  "autoload-dev": {
+    "psr-4": {
+      "Sinso\\AppRoutes\\Tests\\": "Tests"
     }
   },
   "extra": {
