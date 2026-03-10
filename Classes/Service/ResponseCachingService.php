@@ -65,15 +65,24 @@ class ResponseCachingService
         foreach ($cacheControlHeaders as $cacheControlHeader) {
             $valueParts = GeneralUtility::trimExplode(',', $cacheControlHeader);
             foreach ($valueParts as $valuePart) {
+                $valuePart = trim($valuePart);
                 if ($valuePart === 'no-cache' || $valuePart === 'no-store') {
                     if (!empty($GLOBALS['TYPO3_CONF_VARS']['FE']['debug'])) {
                         $response = $response->withAddedHeader('X-APP-ROUTES-UNCACHED', 'caching prohibited by Cache-Control header');
                     }
                     return $response;
                 }
-                [$key, $value] = GeneralUtility::trimExplode('=', $valuePart);
+
+                if (!str_contains($valuePart, '=')) {
+                    continue;
+                }
+
+                [$key, $value] = array_map('trim', explode('=', $valuePart, 2));
                 if ($key === 'max-age') {
-                    $lifetime = $value;
+                    $value = trim($value, '"');
+                    if (ctype_digit($value)) {
+                        $lifetime = (int)$value;
+                    }
                 }
             }
         }
