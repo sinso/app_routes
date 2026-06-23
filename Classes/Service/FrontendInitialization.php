@@ -67,10 +67,11 @@ class FrontendInitialization
         $pageInformation = $this->pageInformationFactory->create($request);
         $site = $request->getAttribute('site');
 
+        $conditionMatcherVariables = $this->prepareConditionMatcherVariables($request);
         $frontendTypoScript = $this->frontendTypoScriptFactory->createSettingsAndSetupConditions(
             $site,
             $pageInformation->getSysTemplateRows(),
-            [],
+            $conditionMatcherVariables,
             $this->typoScriptCache,
         );
         $pageArguments = new PageArguments($site->getRootPageId(), '0', [], [], $request->getQueryParams());
@@ -79,7 +80,7 @@ class FrontendInitialization
             $frontendTypoScript,
             $site,
             $pageInformation->getSysTemplateRows(),
-            [],
+            $conditionMatcherVariables,
             $pageArguments->getPageType(),
             $this->typoScriptCache,
             $request,
@@ -100,5 +101,23 @@ class FrontendInitialization
             }
         }
         return $site->getDefaultLanguage();
+    }
+
+    private function prepareConditionMatcherVariables(ServerRequestInterface $request): array
+    {
+        $pageInformation = $request->getAttribute('frontend.page.information');
+        $topDownRootLine = $pageInformation->getRootLine();
+        $localRootline = $pageInformation->getLocalRootLine();
+        ksort($topDownRootLine);
+        return [
+            'request' => $request,
+            'pageId' => $pageInformation->getId(),
+            'page' => $pageInformation->getPageRecord(),
+            'fullRootLine' => $topDownRootLine,
+            'localRootLine' => $localRootline,
+            'site' => $request->getAttribute('site'),
+            'siteLanguage' => $request->getAttribute('language'),
+            'tsfe' => $request->getAttribute('frontend.controller'),
+        ];
     }
 }
