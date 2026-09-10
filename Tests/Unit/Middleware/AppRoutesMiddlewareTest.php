@@ -6,6 +6,7 @@ namespace Sinso\AppRoutes\Tests\Unit\Middleware;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\Test;
+use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\MockObject\Stub;
 use Psr\Http\Server\RequestHandlerInterface;
 use Sinso\AppRoutes\Middleware\AppRoutesMiddleware;
@@ -19,6 +20,8 @@ use TYPO3\CMS\Core\Http\Response;
 use TYPO3\CMS\Core\Http\ServerRequest;
 use TYPO3\CMS\Core\Site\Entity\SiteInterface;
 use TYPO3\CMS\Core\Site\Entity\SiteLanguage;
+use TYPO3\CMS\Core\TypoScript\AST\Node\RootNode;
+use TYPO3\CMS\Core\TypoScript\FrontendTypoScript;
 use TYPO3\CMS\Frontend\Page\PageInformation;
 use TYPO3\CMS\Frontend\Page\PageParts;
 use TYPO3\TestingFramework\Core\Unit\UnitTestCase;
@@ -151,7 +154,7 @@ final class AppRoutesMiddlewareTest extends UnitTestCase
             ->withAttribute('site', $site);
 
         $reflection = new \ReflectionMethod($this->subject, 'initializeNeededFrontendComponents');
-        $result = $reflection->invoke($this->subject, [], $request);
+        $result = $reflection->invoke($this->subject, ['requiresPageInformation' => true], $request);
 
         $pageParts = $result->getAttribute('frontend.page.parts');
         self::assertInstanceOf(PageParts::class, $pageParts);
@@ -174,7 +177,7 @@ final class AppRoutesMiddlewareTest extends UnitTestCase
             ->withAttribute('site', $site);
 
         $reflection = new \ReflectionMethod($this->subject, 'initializeNeededFrontendComponents');
-        $result = $reflection->invoke($this->subject, [], $request);
+        $result = $reflection->invoke($this->subject, ['requiresPageInformation' => true], $request);
 
         $pageParts = $result->getAttribute('frontend.page.parts');
         self::assertSame(2000, $pageParts->getLastChanged());
@@ -197,9 +200,87 @@ final class AppRoutesMiddlewareTest extends UnitTestCase
             ->withAttribute('site', $site);
 
         $reflection = new \ReflectionMethod($this->subject, 'initializeNeededFrontendComponents');
-        $result = $reflection->invoke($this->subject, [], $request);
+        $result = $reflection->invoke($this->subject, ['requiresPageInformation' => true], $request);
 
         $pageParts = $result->getAttribute('frontend.page.parts');
         self::assertSame(3000, $pageParts->getLastChanged());
+    }
+
+    #[Test]
+    public function initializeNeededFrontendComponentsSkipsPageInformationByDefault(): void
+    {
+        $frontendInitialization = $this->createFrontendInitializationMock();
+        $frontendInitialization->expects(self::never())->method('createPageInformation');
+        $frontendInitialization->expects(self::never())->method('createFrontendTypoScript');
+        $subject = $this->createSubjectWith($frontendInitialization);
+
+        $reflection = new \ReflectionMethod($subject, 'initializeNeededFrontendComponents');
+        $result = $reflection->invoke($subject, [], $this->createRequestWithSite());
+
+        self::assertNull($result->getAttribute('frontend.page.information'));
+        self::assertNull($result->getAttribute('frontend.page.parts'));
+        self::assertNull($result->getAttribute('frontend.typoscript'));
+    }
+
+    #[Test]
+    public function requiresTypoScriptImpliesPageInformation(): void
+    {
+        $pageInformation = new PageInformation();
+        $pageInformation->setPageRecord(['tstamp' => 1000, 'SYS_LASTCHANGED' => 2000]);
+        $frontendTypoScript = new FrontendTypoScript(new RootNode(), [], [], []);
+
+        $frontendInitialization = $this->createFrontendInitializationMock();
+        $frontendInitialization->expects(self::once())->method('createPageInformation')->willReturn($pageInformation);
+        $frontendInitialization->expects(self::once())->method('createFrontendTypoScript')
+            ->with(self::anything(), $pageInformation)
+            ->willReturn($frontendTypoScript);
+        $subject = $this->createSubjectWith($frontendInitialization);
+
+        $reflection = new \ReflectionMethod($subject, 'initializeNeededFrontendComponents');
+        $result = $reflection->invoke($subject, ['requiresTypoScript' => true], $this->createRequestWithSite());
+
+        self::assertSame($pageInformation, $result->getAttribute('frontend.page.information'));
+        self::assertInstanceOf(PageParts::class, $result->getAttribute('frontend.page.parts'));
+        self::assertSame($frontendTypoScript, $result->getAttribute('frontend.typoscript'));
+    }
+
+    #[Test]
+    public function requiresPageInformationDoesNotLeakIntoPageArguments(): void
+    {
+        $request = $this->createRequestWithSite()
+            ->withQueryParams(['requiresPageInformation' => true, 'orderUid' => '42']);
+        $this->frontendInitialization->method('getLanguage')->willReturn(self::createStub(SiteLanguage::class));
+        $pageInformation = new PageInformation();
+        $pageInformation->setPageRecord(['tstamp' => 1000, 'SYS_LASTCHANGED' => 2000]);
+        $this->frontendInitialization->method('createPageInformation')->willReturn($pageInformation);
+
+        $reflection = new \ReflectionMethod($this->subject, 'initializeNeededFrontendComponents');
+        $result = $reflection->invoke($this->subject, ['requiresPageInformation' => true], $request);
+
+        self::assertSame(['orderUid' => '42'], $result->getAttribute('routing')->getArguments());
+    }
+
+    private function createFrontendInitializationMock(): FrontendInitialization&MockObject
+    {
+        $frontendInitialization = $this->createMock(FrontendInitialization::class);
+        $frontendInitialization->method('getLanguage')->willReturn(self::createStub(SiteLanguage::class));
+        return $frontendInitialization;
+    }
+
+    private function createSubjectWith(FrontendInitialization $frontendInitialization): AppRoutesMiddleware
+    {
+        return new AppRoutesMiddleware(
+            $this->context,
+            $frontendInitialization,
+            $this->responseCachingService,
+            $this->router,
+        );
+    }
+
+    private function createRequestWithSite(): ServerRequest
+    {
+        $site = self::createStub(SiteInterface::class);
+        $site->method('getRootPageId')->willReturn(1);
+        return (new ServerRequest('https://example.com/api/test'))->withAttribute('site', $site);
     }
 }

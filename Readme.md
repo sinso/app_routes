@@ -41,7 +41,8 @@ Everything that is available as YAML configuration option in `symfony/routing` s
 This package offers these additional options:
 
 * `defaults.cache: true` - If true, then responses are cached (see more details below). (default: `false`)
-* `defaults.requiresTypoScript: true` - If true, then the `frontend.typoscript` request attribute will be initialized before your handler is called (default: `false`).
+* `defaults.requiresPageInformation: true` - If true, then the `frontend.page.information` and `frontend.page.parts` request attributes will be initialized for the site's root page before your handler is called. This costs a few database queries per request, so only enable it for handlers that read page data (default: `false`).
+* `defaults.requiresTypoScript: true` - If true, then the `frontend.typoscript` request attribute will be initialized before your handler is called. Implies `requiresPageInformation` (default: `false`).
 
 ### Generate Route URLs
 

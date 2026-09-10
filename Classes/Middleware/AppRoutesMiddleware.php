@@ -90,7 +90,7 @@ class AppRoutesMiddleware implements MiddlewareInterface
         $site = $request->getAttribute('site');
 
         // set PageArguments as routing attribute
-        $keysToRemove = ['handler', 'requiresTypoScript', 'cache', 'L', '_route'];
+        $keysToRemove = ['handler', 'requiresTypoScript', 'requiresPageInformation', 'cache', 'L', '_route'];
         $remainingArguments = array_diff_key($request->getQueryParams(), array_flip($keysToRemove));
         $request = $request->withAttribute('routing', new PageArguments($site->getRootPageId(), '0', [], [], $remainingArguments));
 
@@ -104,7 +104,12 @@ class AppRoutesMiddleware implements MiddlewareInterface
             $this->context->setAspect('frontend.preview', new PreviewAspect());
         }
 
-        // page information
+        // page information: costs database queries on every request, so only routes that ask for it get it.
+        // TypoScript needs the sys_template rows of the page, therefore it implies page information.
+        $requiresTypoScript = (bool)($parameters['requiresTypoScript'] ?? false);
+        if (!$requiresTypoScript && !($parameters['requiresPageInformation'] ?? false)) {
+            return $request;
+        }
         $pageInformation = $this->frontendInitialization->createPageInformation($request);
         $request = $request->withAttribute('frontend.page.information', $pageInformation);
 
@@ -117,8 +122,8 @@ class AppRoutesMiddleware implements MiddlewareInterface
         $request = $request->withAttribute('frontend.page.parts', $pageParts);
 
         // TypoScript
-        if ($parameters['requiresTypoScript'] ?? false) {
-            $frontendTypoScript = $this->frontendInitialization->createFrontendTypoScript($request);
+        if ($requiresTypoScript) {
+            $frontendTypoScript = $this->frontendInitialization->createFrontendTypoScript($request, $pageInformation);
             $request = $request->withAttribute('frontend.typoscript', $frontendTypoScript);
         }
 
