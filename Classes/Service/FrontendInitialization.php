@@ -31,9 +31,8 @@ class FrontendInitialization
         return $this->pageInformationFactory->create($request);
     }
 
-    public function createFrontendTypoScript(ServerRequestInterface $request): FrontendTypoScript
+    public function createFrontendTypoScript(ServerRequestInterface $request, PageInformation $pageInformation): FrontendTypoScript
     {
-        $pageInformation = $this->pageInformationFactory->create($request);
         $site = $request->getAttribute('site');
 
         $frontendTypoScript = $this->frontendTypoScriptFactory->createSettingsAndSetupConditions(
